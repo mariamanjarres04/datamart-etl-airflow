@@ -8,12 +8,15 @@ def transformar_ventas(ventas):
     # Igualamos los nombres de las columnas.
     datos = datos.rename(columns={
         "Invoice": "factura",
+        "InvoiceNo": "factura",
         "StockCode": "producto",
         "Description": "descripcion",
         "Quantity": "cantidad",
         "InvoiceDate": "fecha",
         "Price": "precio",
+        "UnitPrice": "precio",
         "Customer ID": "cliente",
+        "CustomerID": "cliente",
         "Country": "pais"
     })
 
