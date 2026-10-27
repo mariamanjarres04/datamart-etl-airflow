@@ -9,7 +9,7 @@ from airflow.operators.python import PythonOperator
 
 
 # Carpeta donde estarán los archivos dentro de Airflow.
-RAIZ = Path("/opt/airflow")
+RAIZ = Path("/opt/airflow") if Path("/opt/airflow/data/raw").is_dir() else Path(__file__).resolve().parent.parent
 DATOS = RAIZ / "data"
 FUENTE = DATOS / "raw" / "ventas_2009_2011.csv"
 
