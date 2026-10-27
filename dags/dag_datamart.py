@@ -53,6 +53,10 @@ ventas = pd.read_csv(
 # Conciliacion: incorporar de la segunda fuente solo facturas ausentes
 # en el historico para evitar duplicar periodos solapados.
 recientes = pd.read_csv("data/raw/ventas_2010_2011.csv", encoding="latin-1", low_memory=False)
+ventas["numero_fila_origen"] = range(2, len(ventas) + 2)
+ventas["fuente_origen"] = "ventas_2009_2011.csv"
+recientes["numero_fila_origen"] = range(2, len(recientes) + 2)
+recientes["fuente_origen"] = "ventas_2010_2011.csv"
 historico = transformar_ventas(ventas)
 reciente = transformar_ventas(recientes)
 facturas_historicas = set(historico["factura"].dropna().astype(str))
