@@ -97,6 +97,20 @@ def cargar_ventas(ventas_validas, ventas_rechazadas, fuente):
                 destino_ventas = "ventas_stage" if reconstruir else "ventas"
                 destino_rechazos = "rechazos_stage" if reconstruir else "ventas_rechazadas"
 
+                if not reconstruir:
+                    # Bloqueamos la mezcla de claves históricas (por contenido)
+                    # con claves nuevas (por posición en archivo).
+                    cursor.execute("SELECT clave_registro FROM public.ventas LIMIT 1")
+                    primera = cursor.fetchone()
+                    if primera is not None:
+                        clave_esperada = generar_clave(ventas_validas.iloc[0])
+                        cursor.execute("SELECT 1 FROM public.ventas WHERE clave_registro = %s", (clave_esperada,))
+                        if cursor.fetchone() is None:
+                            raise RuntimeError(
+                                "Carga ordinaria bloqueada: el warehouse puede tener claves antiguas. "
+                                "Ejecute primero la reconstrucción validada con DATAMART_REBUILD=1."
+                            )
+
                 # Preparamos las ventas para insertarlas en una sola operación.
                 registros_validos = []
 
