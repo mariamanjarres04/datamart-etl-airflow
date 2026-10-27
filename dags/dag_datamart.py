@@ -6,12 +6,14 @@ import sys
 
 from airflow import DAG
 from airflow.operators.python import PythonOperator
+from airflow.models import Variable
 
 
 # Carpeta donde estarán los archivos dentro de Airflow.
-RAIZ = Path("/opt/airflow")
+RAIZ = Path("/opt/airflow") if Path("/opt/airflow/data/raw").is_dir() else Path(__file__).resolve().parent.parent
 DATOS = RAIZ / "data"
 FUENTE = DATOS / "raw" / "ventas_2009_2011.csv"
+FUENTE_RECIENTE = DATOS / "raw" / "ventas_2010_2011.csv"
 
 
 def ejecutar_codigo(codigo):
@@ -24,11 +26,17 @@ def ejecutar_codigo(codigo):
 
 
 def extraer():
+    # Variables administradas por Airflow, con valores por defecto reproducibles.
+    habilitado = Variable.get("datamart_etl_habilitado", default_var="true").lower()
+    if habilitado not in ("true", "1", "yes"):
+        raise RuntimeError("ETL deshabilitado por Variable datamart_etl_habilitado")
     # Verificamos que exista el archivo de entrada.
     if not FUENTE.is_file():
         raise FileNotFoundError(f"No existe el CSV: {FUENTE}")
 
-    print("Extracción: archivo disponible.")
+    if not FUENTE_RECIENTE.is_file():
+        raise FileNotFoundError(f"No existe el segundo CSV obligatorio: {FUENTE_RECIENTE}")
+    print("Extracción: ambas fuentes disponibles.")
 
 
 def transformar():
@@ -42,7 +50,17 @@ ventas = pd.read_csv(
     encoding="latin-1",
     low_memory=False
 )
-datos = transformar_ventas(ventas)
+# Conciliacion: incorporar de la segunda fuente solo facturas ausentes
+# en el historico para evitar duplicar periodos solapados.
+recientes = pd.read_csv("data/raw/ventas_2010_2011.csv", encoding="latin-1", low_memory=False)
+historico = transformar_ventas(ventas)
+reciente = transformar_ventas(recientes)
+facturas_historicas = set(historico["factura"].dropna().astype(str))
+nuevas = reciente.loc[~reciente["factura"].astype(str).isin(facturas_historicas)].copy()
+print("Filas historicas:", len(historico))
+print("Filas segunda fuente:", len(reciente))
+print("Filas de facturas nuevas en segunda fuente:", len(nuevas))
+datos = pd.concat([historico, nuevas], ignore_index=True)
 datos.to_pickle("data/processed/ventas_transformadas.pkl")
 print("Transformación completada:", len(datos))
 """)
@@ -66,6 +84,7 @@ print("Rechazados:", len(rechazadas))
 
 
 def cargar():
+    # La Connection del warehouse se resuelve en etl/carga_ventas.py.
     # Insertamos los resultados en PostgreSQL.
     ejecutar_codigo("""
 import pandas as pd
@@ -89,6 +108,7 @@ with DAG(
     start_date=datetime(2026, 10, 1),
     schedule_interval="@daily",
     catchup=False,
+    max_active_runs=1,
     default_args={
         "owner": "datamart",
         "retries": 1,
