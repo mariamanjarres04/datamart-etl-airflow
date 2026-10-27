@@ -45,13 +45,27 @@ def limpiar_valor(valor):
 def cargar_ventas(ventas_validas, ventas_rechazadas, fuente):
     """Guarda las ventas válidas y los rechazos en PostgreSQL."""
 
-    conexion = psycopg2.connect(
-        host=os.getenv("WAREHOUSE_DB_HOST", "localhost"),
-        port=os.getenv("WAREHOUSE_DB_PORT", "5544"),
-        dbname=os.getenv("WAREHOUSE_DB_NAME"),
-        user=os.getenv("WAREHOUSE_DB_USER"),
-        password=os.getenv("WAREHOUSE_DB_PASSWORD"),
-    )
+    # Airflow administra las credenciales mediante una Connection.
+    # En ejecuciones locales se conservan las variables del archivo .env.
+    if os.getenv("AIRFLOW_HOME"):
+        from airflow.hooks.base import BaseHook
+
+        configuracion = BaseHook.get_connection("datamart_warehouse")
+        conexion = psycopg2.connect(
+            host=configuracion.host,
+            port=configuracion.port,
+            dbname=configuracion.schema,
+            user=configuracion.login,
+            password=configuracion.password,
+        )
+    else:
+        conexion = psycopg2.connect(
+            host=os.getenv("WAREHOUSE_DB_HOST", "localhost"),
+            port=os.getenv("WAREHOUSE_DB_PORT", "5544"),
+            dbname=os.getenv("WAREHOUSE_DB_NAME"),
+            user=os.getenv("WAREHOUSE_DB_USER"),
+            password=os.getenv("WAREHOUSE_DB_PASSWORD"),
+        )
 
     try:
         with conexion:
