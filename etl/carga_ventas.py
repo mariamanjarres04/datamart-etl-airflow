@@ -139,7 +139,7 @@ def cargar_ventas(ventas_validas, ventas_rechazadas, fuente):
                 if registros_validos:
                     execute_values(
                         cursor,
-                        """
+                        f"""
                         INSERT INTO {destino_ventas} (
                             clave_registro, factura, producto, descripcion,
                             cantidad, fecha, precio, cliente, pais,
@@ -173,7 +173,7 @@ def cargar_ventas(ventas_validas, ventas_rechazadas, fuente):
                 if registros_rechazados:
                     execute_values(
                         cursor,
-                        """
+                        f"""
                         INSERT INTO {destino_rechazos} (
                             clave_registro, fuente, motivo, datos_originales
                         )
