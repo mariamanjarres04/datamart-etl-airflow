@@ -6,6 +6,7 @@ import sys
 
 from airflow import DAG
 from airflow.operators.python import PythonOperator
+from airflow.models import Variable
 
 
 # Carpeta donde estarán los archivos dentro de Airflow.
@@ -25,6 +26,10 @@ def ejecutar_codigo(codigo):
 
 
 def extraer():
+    # Variables administradas por Airflow, con valores por defecto reproducibles.
+    habilitado = Variable.get("datamart_etl_habilitado", default_var="true").lower()
+    if habilitado not in ("true", "1", "yes"):
+        raise RuntimeError("ETL deshabilitado por Variable datamart_etl_habilitado")
     # Verificamos que exista el archivo de entrada.
     if not FUENTE.is_file():
         raise FileNotFoundError(f"No existe el CSV: {FUENTE}")
@@ -79,6 +84,7 @@ print("Rechazados:", len(rechazadas))
 
 
 def cargar():
+    # La Connection del warehouse se resuelve en etl/carga_ventas.py.
     # Insertamos los resultados en PostgreSQL.
     ejecutar_codigo("""
 import pandas as pd
